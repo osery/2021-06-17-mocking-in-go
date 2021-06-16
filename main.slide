@@ -1,0 +1,233 @@
+Mocking in Go using GoMock
+Coffee To Go (2021-06-17)
+
+Ondrej Sery
+osery@purestorage.com
+
+* Outline
+
+- Tests & Benchmarks
+- Test Dummies
+- GoMock & MockGen
+- Test Suites
+- Testify & Mockery
+- Build Process Integration
+
+
+#-------------------------------------
+* Tests & Benchmarks
+#-------------------------------------
+
+* Tests
+
+- As simple as:
+
+.code test/simple_test.go /// START/,/// END/
+
+
+* Benchmarks
+
+- As simple as:
+
+.code bench/uuid_test.go /// START/,/// END/
+
+- Run as:
+
+  go test -bench=BenchmarkUUID ./bench
+
+
+* Parameterized Tests
+
+.code parameterized/parameterized_test.go /// START/,/// END/
+
+* Testify
+
+.code testify/parameterized_test.go /// START/,/// END/
+
+
+#-------------------------------------
+* Dependencies in Tests
+#-------------------------------------
+
+* The Dependency: Foo
+
+.code pkg/foo/foo.go /// START_FOO/,/// END_FOO/
+
+
+* The Dependent: Bar (1)
+
+.code pkg/bar/bar.go /// START_PUBLIC/,/// END_PUBLIC/
+
+
+* The Dependent: Bar (2)
+
+.code pkg/bar/bar.go /// START_IMPL/,/// END_IMPL/
+
+
+#-------------------------------------
+* Test Dummies
+#-------------------------------------
+
+* Test Dummy for Foo
+
+.code dummy/dummy_test.go /// START_DUMMY/,/// END_DUMMY/
+
+
+* Usage: Success
+
+.code dummy/dummy_test.go /// START_TEST1/,/// END_TEST1/
+
+
+* Usage: Failure
+
+.code dummy/dummy_test.go /// START_TEST2/,/// END_TEST2/
+
+
+#-------------------------------------
+* Mocks: GoMock & MockGen
+#-------------------------------------
+
+* GoMock & MockGen
+
+- Generates (a bit) typed mocks of interfaces
+- Unified way to write expectations
+- Simple, yet expressive
+- Generation:
+
+  > mockgen \
+      -destination pkg/testing/generated/mocks/foo.go \
+      -package mocks \
+      github.com/osery/2021-06-17-mocking-in-go/pkg/foo \
+      Foo
+
+
+* Usage
+
+.code mocking/mock_test.go /// START_TEST1/,/// END_TEST1/
+
+
+#-------------------------------------
+* Test Suites
+#-------------------------------------
+
+* Suite Definition
+
+.code suites/suite_test.go /// START_SUITE/,/// END_SUITE/
+
+
+* Usage: Success
+
+.code suites/suite_test.go /// START_TEST1/,/// END_TEST1/
+
+
+* Usage: Failure
+
+.code suites/suite_test.go /// START_TEST2/,/// END_TEST2/
+
+
+* Usage: Method ordering
+
+.code suites/suite_test.go /// START_TEST3/,/// END_TEST3/
+
+
+* Usage: Matching and side effects
+
+.code suites/suite_test.go /// START_TEST4/,/// END_TEST4/
+
+
+#-------------------------------------
+* Alternative: Testify & Mockery
+#-------------------------------------
+
+* Testify & Mockery:
+
+- Generates (even less) typed mocks of interfaces
+- Limited expressive power
+- More informative error messages
+- Generation:
+
+  > mockery \
+      --name Foo \
+      --dir=pkg/foo \
+      --output=pkg/testing/generated/mockery/mocks
+
+
+* Usage: Success
+
+.code mockery/mockery_test.go /// START_TEST1/,/// END_TEST1/
+
+
+* Usage: Failure
+
+.code mockery/mockery_test.go /// START_TEST2/,/// END_TEST2/
+
+
+#-------------------------------------
+* Build Process Integration
+#-------------------------------------
+
+* Use go:generate
+
+- Mockgen
+
+  //go:generate go run github.com/golang/mock/mockgen
+      -destination ../testing/generated/mockgen/mocks/foo.go -package mocks . Foo
+
+- Mockery
+
+  //go:generate go run github.com/vektra/mockery/v2
+      --name Foo --output=../testing/generated/mockery/mocks
+
+- Execute
+
+  > go generate ./...
+
+- Lock tool dependency version in _go.mod_ by a blank import in _tools.go_
+
+  import (
+    _ "github.com/golang/mock/mockgen"
+    _ "github.com/vektra/mockery/v2"
+  )
+
+
+* To commit or not to commit?
+
+- If committing, integrate into a PR check (delete all, regenerate, fail on diff)
+
+
+#-------------------------------------
+* More alternatives...
+#-------------------------------------
+
+* Gomega
+
+- Fluent assertions
+- More expressive than Testify
+.link https://onsi.github.io/gomega/
+
+  result, err := DoSomethingHard()
+  Ω(err).ShouldNot(HaveOccurred())
+  Ω(result).Should(Equal("foo"))
+
+
+* Ginkgo
+
+- BDD testing framework
+- Quite talkative
+.link https://onsi.github.io/ginkgo/
+
+  BeforeEach(func() {
+    fakeServer = NewFakeServer()
+    client = NewAPIClient(fakeServer)
+  })
+
+  Describe("failure modes", func() {
+    Context("when the server returns unparseable JSON", func() {
+      BeforeEach(func() {
+        fakeServer.Succeed("{I'm not JSON!")
+      })
+
+      It("should not report success", AssertDoesNotReportSuccess(&sharedInputs))
+    })
+
+    ...
